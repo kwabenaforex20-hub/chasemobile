@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a438b">
+  <meta name="description" content="Chase Bank mobile banking. All balances and transactions are simulated.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Chase Bank </title>
+  <style>
+    :root {
+      --primary: #0a438b;
+      --primary-dark: #072e61;
+      --primary-light: #1565c0;
+      --accent: #00a3e0;
+      --bg: #f4f6f9;
+      --surface: #ffffff;
+      --text: #1a202c;
+      --text-muted: #718096;
+      --border: #e2e8f0;
+      --success: #2e7d32;
+      --pending: #e65100;
+      --safe-bottom: env(safe-area-inset-bottom, 16px);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      width: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /*  Notice Banner */
+    .-badge {
+      background: #fff3cd;
+      color: #856404;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      padding: 4px 8px;
+      border-bottom: 1px solid #ffeeba;
+      letter-spacing: 0.5px;
+      z-index: 100;
+    }
+
+    /* App Header */
+    .app-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      z-index: 10;
+      position: relative;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .brand svg {
+      width: 24px;
+      height: 24px;
+      fill: #fff;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-left: auto;
+    }
+
+    .menu-btn {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,.15);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .side-menu-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(15, 23, 42, .45);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .2s ease, visibility .2s ease;
+    }
+
+    .side-menu-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .side-menu {
+      width: min(82vw, 320px);
+      height: 100%;
+      padding: calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom));
+      background: #fff;
+      color: var(--text);
+      transform: translateX(-100%);
+      transition: transform .2s ease;
+      box-shadow: 8px 0 24px rgba(0,0,0,.16);
+    }
+
+    .side-menu-overlay.open .side-menu {
+      transform: translateX(0);
+    }
+
+    .side-menu-title {
+      margin: 4px 0 18px;
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    .side-menu-link {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-height: 50px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .side-menu-link:active {
+      background: #eef4fb;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .icon-btn:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Screen Container */
+    .screens-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow-y: auto;
+      padding: 16px;
+      padding-bottom: 90px;
+      display: none;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Common Card Components */
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    /* Balance Hero */
+    .balance-hero {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(10, 67, 139, 0.25);
+    }
+
+    .balance-label {
+      font-size: 13px;
+      opacity: 0.85;
+      margin-bottom: 4px;
+    }
+
+    .balance-amount {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 14px;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .action-btn:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Account Overview */
+    .account-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .account-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .account-info h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .account-info p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .account-val {
+      text-align: right;
+    }
+
+    .account-val .val {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .account-val .sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Virtual Debit Card */
+    .virtual-card {
+      background: linear-gradient(135deg, #093368 0%, #1565c0 100%);
+      color: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      height: 180px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 6px 14px rgba(9, 51, 104, 0.25);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .virtual-card::after {
+      content: "";
+      position: absolute;
+      top: -40px;
+      right: -40px;
+      width: 140px;
+      height: 140px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chip {
+      width: 36px;
+      height: 26px;
+      background: #e0b04c;
+      border-radius: 4px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+    }
+
+    .card-number {
+      font-family: monospace;
+      font-size: 16px;
+      letter-spacing: 2px;
+    }
+
+    .card-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .card-holder {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Controls */
+    .switch-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc;
+      transition: .3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Transaction List */
+    .search-bar {
+      margin-bottom: 12px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .tab-btn {
+      padding: 6px 12px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .tx-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .tx-item:last-child {
+      border-bottom: none;
+    }
+
+    .tx-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: #ebf3fb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .tx-details {
+      flex: 1;
+    }
+
+    .tx-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .tx-date {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .tx-amount {
+      text-align: right;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .tx-amount.negative {
+      color: var(--text);
+    }
+
+    .tx-amount.positive {
+      color: var(--success);
+    }
+
+    .status-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      display: inline-block;
+      margin-top: 2px;
+    }
+
+    .status-badge.pending {
+      background: #fff3e0;
+      color: var(--pending);
+    }
+
+    .status-badge.completed {
+      background: #e8f5e9;
+      color: var(--success);
+    }
+
+    /* Fixed Bottom Nav */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding-top: 8px;
+      padding-bottom: var(--safe-bottom);
+      z-index: 50;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .nav-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .nav-btn.active {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* Modal / Sheet */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .sheet {
+      background: #fff;
+      width: 100%;
+      border-radius: 16px 16px 0 0;
+      padding: 20px;
+      padding-bottom: calc(var(--safe-bottom) + 16px);
+      max-height: 80vh;
+      overflow-y: auto;
+      animation: slideUp 0.25s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .sheet-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      color: var(--text-muted);
+    }
+
+    .detail-val {
+      font-weight: 600;
+    }
+    html { color-scheme: light; }
+    body { min-height: 100dvh; min-height: 100svh; }
+    button, input, select { font: inherit; }
+    button { touch-action: manipulation; }
+    .-badge { flex: 0 0 auto; padding: 5px 8px; }
+    .app-header { padding-top: max(12px, env(safe-area-inset-top)); }
+    .screens-container { min-height: 0; }
+    .screen { padding: 16px 16px calc(92px + env(safe-area-inset-bottom)); overscroll-behavior: contain; scrollbar-width: none; }
+    .screen::-webkit-scrollbar { display: none; }
+    .screen.active { animation: screenIn .18s ease-out; }
+    @keyframes screenIn { from { opacity: .7; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .card, .balance-hero { border-radius: 16px; }
+    .balance-hero { background: linear-gradient(145deg, #0a438b, #072e61); padding: 22px 18px; }
+    .bottom-nav { position: absolute; padding-bottom: max(9px, env(safe-area-inset-bottom)); }
+    .nav-btn { min-height: 48px; }
+    .nav-btn svg { width: 22px; height: 22px; }
+    .icon-btn { width: 40px; height: 40px; }
+    .header-actions { gap: 8px; }
+    .page-heading { font-size: 23px; letter-spacing: -.45px; margin: 4px 0 14px; }
+    .eyebrow { color: var(--text-muted); font-size: 12px; margin-bottom: 4px; }
+    .greeting { margin: 2px 0 14px; }
+    .greeting h1 { font-size: 24px; letter-spacing: -.5px; }
+    .greeting p { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+    .account-item { min-height: 68px; }
+    .account-item:active, .tx-item:active { background: #f7f9fc; }
+    .action-btn { min-height: 66px; }
+    .filter-tabs { scrollbar-width: none; }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+    .modal-overlay { z-index: 100; }
+    .sheet { max-height: min(86dvh, 760px); padding: 22px 20px calc(20px + env(safe-area-inset-bottom)); }
+    .sheet-grabber { width: 38px; height: 4px; border-radius: 9px; background: #d7dce4; margin: -10px auto 16px; }
+    .sheet-title { font-size: 19px; }
+    .form-field { display: block; margin: 14px 0; color: var(--text); font-size: 13px; font-weight: 600; }
+    .form-field input, .form-field select { display: block; width: 100%; margin-top: 7px; padding: 14px; border: 1px solid var(--border); border-radius: 11px; background: #fff; color: var(--text); font-size: 16px; outline: none; }
+    .form-field input:focus, .form-field select:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(21,101,192,.12); }
+    .primary-action, .secondary-action { width: 100%; min-height: 50px; border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 700; cursor: pointer; }
+    .primary-action { color: #fff; background: var(--primary); }
+    .primary-action:disabled { opacity: .65; }
+    .secondary-action { color: var(--primary); background: #eaf1f9; margin-top: 9px; }
+    .inline-note { color: var(--text-muted); font-size: 12px; line-height: 1.5; margin: 12px 0; }
+    .toast { position: fixed; z-index: 300; bottom: calc(82px + env(safe-area-inset-bottom)); left: 16px; right: 16px; max-width: 480px; margin: auto; padding: 13px 16px; background: #202936; color: #fff; border-radius: 12px; box-shadow: 0 8px 26px #0003; font-size: 14px; animation: toastIn .18s ease-out; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .notice-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .notice-item:last-child { border-bottom: 0; }
+    .notice-item strong { display: block; font-size: 14px; margin-bottom: 4px; }
+    .notice-item p { color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+    .profile-avatar { width: 54px; height: 54px; flex: 0 0 54px; border-radius: 50%; display: grid; place-items: center; background: #e8f0fb; color: var(--primary); font-weight: 800; }
+    .accounts-heading { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 16px; }
+    .accounts-heading h1 { font-size: 24px; letter-spacing: -.4px; }
+    .round-more { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 50%; background: #fff; color: var(--text-muted); font-weight: 800; }
+    .bank-accounts-card { padding: 0; overflow: hidden; }
+    .bank-accounts-title { padding: 16px; color: #fff; font-weight: 700; background: linear-gradient(110deg, var(--primary), var(--primary-light)); }
+    .bank-account-row { display: block; width: 100%; padding: 18px 16px; border: 0; border-bottom: 1px solid var(--border); background: #fff; text-align: left; cursor: pointer; }
+    .bank-account-row:last-child { border-bottom: 0; }
+    .bank-account-name { color: #384354; font-size: 14px; font-weight: 600; }
+    .bank-account-name span { color: var(--primary); }
+    .bank-account-balance { display: block; margin-top: 12px; text-align: right; font-size: 27px; font-weight: 500; letter-spacing: -.5px; }
+    .bank-account-caption { display: block; margin-top: 2px; text-align: right; color: var(--text-muted); font-size: 12px; }
+    .account-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0 22px; }
+    .account-shortcut { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--primary); font-size: 11px; line-height: 1.2; font-weight: 600; text-align: center; cursor: pointer; }
+    .account-shortcut-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: #fff; color: var(--primary); box-shadow: 0 1px 5px #14253d12; }
+    .account-shortcut-icon svg { width: 24px; height: 24px; fill: currentColor; }
+    .account-link-card { display: flex; width: 100%; align-items: center; justify-content: space-between; border: 1px solid var(--border); border-radius: 15px; background: #fff; padding: 18px 16px; margin: 0 0 16px; text-align: left; cursor: pointer; }
+    .account-link-card strong { display: block; font-size: 15px; }
+    .account-link-card small { display: block; color: var(--text-muted); margin-top: 5px; font-size: 12px; }
+    .open-products { padding: 16px; }
+    .open-products h2 { font-size: 16px; margin-bottom: 16px; }
+    .product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .product-option { min-width: 0; border: 0; background: transparent; color: var(--primary); font-size: 11px; font-weight: 600; cursor: pointer; }
+    .product-option span { display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 8px; border-radius: 50%; background: #eef5fc; font-size: 21px; }
+    .account-detail-summary { padding: 20px 16px; border: 1px solid var(--border); border-radius: 14px; background: #fff; margin-bottom: 16px; }
+    .account-detail-balance { text-align: right; font-size: 30px; letter-spacing: -.6px; }
+    .account-detail-caption { color: var(--text-muted); text-align: right; margin: 3px 0 24px; }
+    .account-detail-summary h4 { font-size: 15px; margin-bottom: 8px; }
+    .account-detail-value { font-size: 14px; }
+    .account-detail-value strong { font-weight: 700; }
+    .account-detail-quick { display: grid; grid-template-columns: repeat(3, 1fr); margin: 12px 0 20px; }
+    .account-detail-quick .account-shortcut-icon { width: 48px; height: 48px; }
+    .account-transaction-preview { margin-top: 16px; }
+    .account-transaction-preview .tx-item { padding: 12px 0; }
+    .account-details-toggle { display: block; position: relative; margin: -34px auto 0; padding: 8px 18px; border: 1px solid var(--border); border-radius: 24px; background: #fff; color: var(--primary); font-weight: 600; }
+    .account-hidden-details[hidden] { display: none; }
+    .-record-notice { padding: 10px 12px; margin: 0 0 12px; border: 1px solid #e8c86b; border-radius: 10px; background: #fff7dc; color: #705915; font-size: 11px; font-weight: 700; line-height: 1.4; }
+    .virtual-card.is-locked { filter: saturate(.35); }
+    .virtual-card.is-locked::before { content: "CARD LOCKED"; position: absolute; z-index: 1; inset: auto 0 12px; text-align: center; font-size: 12px; font-weight: 800; letter-spacing: 2px; }
+    .switch input:focus-visible + .slider { outline: 3px solid #82b8f5; }
+    @media (min-width: 700px) {
+      body { max-width: 520px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+      .bottom-nav { left: 50%; right: auto; width: min(100%, 520px); transform: translateX(-50%); }
+      .toast { bottom: 86px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  
+
+  <!-- Header -->
+  <header class="app-header">
+    <button class="menu-btn" type="button" aria-label="Open navigation menu" aria-controls="side-menu" aria-expanded="false" onclick="toggleSideMenu()">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+    <div class="brand">
+      <span>Chase Bank</span>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="openNotifications()" aria-label="Notifications">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+        </svg>
+      </button>
+      <button class="icon-btn" onclick="switchTab('screen-profile')" aria-label="Open profile">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="side-menu-overlay" id="side-menu" onclick="closeSideMenu(event)" aria-hidden="true">
+    <aside class="side-menu" aria-label="Main navigation" onclick="event.stopPropagation()">
+      <div class="side-menu-title">Chase Bank</div>
+      <button class="side-menu-link" type="button" onclick="navigateFromMenu('screen-home')">Home</button>
+      <button class="side-menu-link" type="button" onclick="navigateFromMenu('screen-accounts')">Accounts</button>
+      <button class="side-menu-link" type="button" onclick="navigateFromMenu('screen-cards')">Cards</button>
+      <button class="side-menu-link" type="button" onclick="navigateFromMenu('screen-activity')">Activity</button>
+      <button class="side-menu-link" type="button" onclick="navigateFromMenu('screen-profile')">Profile</button>
+    </aside>
+  </div>
+
+  <!-- Main Viewport Screens -->
+  <main class="screens-container">
+
+    <!-- SCREEN 1: HOME DASHBOARD -->
+    <section id="screen-home" class="screen active">
+      <div class="accounts-heading"><h1>Accounts</h1><button class="round-more" type="button" aria-label="Add or send payment" onclick="openQuickActions()">+</button></div>
+      <div class="card bank-accounts-card">
+        <div class="bank-accounts-title">Bank accounts (1)</div>
+        <button class="bank-account-row" type="button" onclick="openAccountDetails('checking')">
+          <span class="bank-account-name">TOTAL CHECKING (...4321) <span aria-hidden="true">›</span></span>
+          <span class="bank-account-balance" id="home-checking-balance">$68.00</span>
+          <span class="bank-account-caption">Available balance</span>
+        </button>
+        <button class="bank-account-row" type="button" onclick="openAccountDetails('savings')">
+          <span class="bank-account-name">EVERYDAY CHECKING (...8765) <span aria-hidden="true">›</span></span>
+          <span class="bank-account-balance" id="home-savings-balance">$0.00</span>
+          <span class="bank-account-caption">Available balance</span>
+        </button>
+      </div>
+
+      <div class="account-shortcuts" aria-label="Account quick actions">
+        <button class="account-shortcut" type="button" onclick="openActionModal('Zelle')">
+          <span class="account-shortcut-icon"><svg viewBox="0 0 24 24"><path d="M5 3h14v4L9 17h10v4H5v-4L15 7H5V3Z"/></svg></span>Send to Zelle
+        </button>
+        <button class="account-shortcut" type="button" onclick="openActionModal('Deposit Check')">
+          <span class="account-shortcut-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm0 4v8h16V9H4Zm2 2h7v2H6v-2Zm12 0h-2v2h2v-2Z"/></svg></span>Deposit checks
+        </button>
+        <button class="account-shortcut" type="button" onclick="showBillPaymentNotice()">
+          <span class="account-shortcut-icon"><svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 0 1 2 2v18l-3-2-3 2-3-2-3 2-3-2-3 2V4a2 2 0 0 1 2-2Zm2 5v2h8V7H8Zm0 4v2h8v-2H8Zm0 4v2h5v-2H8Z"/></svg></span>Pay bills
+        </button>
+      </div>
+
+      <button class="account-link-card" type="button" onclick="switchTab('screen-profile')">
+        <span><strong>Manage accounts</strong><small>Access account tools and services</small></span><span aria-hidden="true" style="font-size:24px;color:var(--text-muted)">›</span>
+      </button>
+
+      <div class="card open-products">
+        <h2>Explore Chase products</h2>
+        <div class="product-grid">
+          <button class="product-option" type="button" onclick="showProductInfo('Cards')"><span>▣</span>Cards</button>
+          <button class="product-option" type="button" onclick="showProductInfo('Checking')"><span>▤</span>Checking</button>
+          <button class="product-option" type="button" onclick="showProductInfo('Savings')"><span>◉</span>Savings</button>
+          <button class="product-option" type="button" onclick="showProductInfo('Business')"><span>▣</span>Business</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div class="card-title" style="margin-bottom:0;">Recent activity</div>
+          <button type="button" style="font-size:12px;color:var(--primary);font-weight:600;background:none;border:0;padding:8px;" onclick="switchTab('screen-activity')">See all</button>
+        </div>
+        <div id="home-tx-preview"></div>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: ACCOUNTS -->
+    <section id="screen-accounts" class="screen">
+      <div class="card">
+        <div class="card-title">Deposit Accounts</div>
+        <div class="account-item" role="button" tabindex="0" onclick="openAccountDetails('checking')" onkeydown="if(event.key==='Enter')openAccountDetails('checking')">
+          <div class="account-info">
+            <h4>Total Checking</h4>
+            <p>Account: ...4321</p>
+            <p style="font-size: 11px; color: var(--primary);">Routing: 000000000 )</p>
+          </div>
+          <div class="account-val">
+            <div class="val" id="accounts-checking-balance">$68.00</div>
+            <div class="sub">Available balance</div>
+          </div>
+        </div>
+        <div class="account-item" role="button" tabindex="0" onclick="openAccountDetails('savings')" onkeydown="if(event.key==='Enter')openAccountDetails('savings')">
+          <div class="account-info">
+            <h4>Everyday Checking</h4>
+            <p>Account: ...8765</p>
+            <p style="font-size: 11px; color: var(--primary);"> Checking Account</p>
+          </div>
+          <div class="account-val">
+            <div class="val" id="accounts-savings-balance">$0.00</div>
+            <div class="sub">Available balance</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Account tools &amp; records</div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;"></p>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: CARDS -->
+    <section id="screen-cards" class="screen">
+      <div class="virtual-card">
+        <div class="card-top">
+          <span style="font-size: 14px; font-weight: 700; letter-spacing: 1px;">CHASE DEBIT</span>
+          <div class="chip"></div>
+        </div>
+        <div class="card-number">•••• •••• •••• 9812</div>
+        <div class="card-bottom">
+          <div>
+            <div style="font-size: 9px; opacity: 0.7;">CARDHOLDER</div>
+            <div class="card-holder">ENOCH KYERE</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 9px; opacity: 0.7;">EXPIRES</div>
+            <div style="font-size: 12px; font-weight: 600;">11/28</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Card Controls ()</div>
+        <div class="switch-row">
+          <div>
+            <div style="font-size: 14px; font-weight: 600;">Lock Card</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Temporarily block new charges</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="card-lock-toggle" onchange="toggleCardLock(this)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="switch-row" style="border-top: 1px solid var(--border);">
+          <div>
+            <div style="font-size: 14px; font-weight: 600;">Online Transactions</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Allow e-commerce purchases</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="online-toggle" checked onchange="toggleOnlineTransactions(this)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Spending Limits</div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; margin: 8px 0 4px 0;">
+          <span>Daily ATM Withdrawal</span>
+          <span style="font-weight: 600;">$500.00 Limit</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px;">
+          <span>Daily Purchase Limit</span>
+          <span style="font-weight: 600;">$2,500.00 Limit</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 4: ACTIVITY / TRANSACTIONS -->
+    <section id="screen-activity" class="screen">
+      <div class="search-bar">
+        <input type="text" class="search-input" id="tx-search" placeholder="Search transactions..." oninput="handleTxSearch(this.value)">
+      </div>
+      <div class="filter-tabs">
+        <button class="tab-btn active" onclick="filterTx('all', this)">All</button>
+        <button class="tab-btn" onclick="filterTx('pending', this)">Pending</button>
+        <button class="tab-btn" onclick="filterTx('completed', this)">Completed</button>
+        <button class="tab-btn" onclick="filterTx('credit', this)">Income</button>
+      </div>
+      <div class="card">
+        <div id="full-tx-list"></div>
+      </div>
+    </section>
+
+    <!-- SCREEN 5: PROFILE -->
+    <section id="screen-profile" class="screen">
+      <p></p>
+      <div class="card">
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+          <div style="width: 50px; height: 50px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px;">
+            EK
+          </div>
+          <div>
+            <div style="font-size: 16px; font-weight: 700;">Enoch Kyere</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Chase Bank profile</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Status</span>
+          <span class="detail-val" style="color: var(--success);">Active </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">App Version</span>
+          <span class="detail-val">1.0.0-</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Personal &amp; account details</div>
+      
+        <div class="detail-row"><span class="detail-label">Address</span><span class="detail-val">3043 Charlotte Drive. Columbus Ohio 43224</span></div>
+        <div class="detail-row"><span class="detail-label">Account number</span><span class="detail-val"> 691677333</span></div>
+        <div class="detail-row"><span class="detail-label">Routing number</span><span class="detail-val">044000037</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Security &amp; Preferences</div>
+        <div class="switch-row">
+          <div class="account-info">
+            <h4>Biometric Sign-In</h4>
+            <p>Face ID / Fingerprint simulation</p>
+          </div>
+          <label class="switch" aria-label="Toggle biometric preference">
+            <input type="checkbox" id="biometric-toggle" onchange="togglePreference('biometrics', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="account-item" role="button" tabindex="0" onclick="openNotifications()">
+          <div class="account-info"><h4>Notifications</h4><p>Device activity and app updates</p></div><span aria-hidden="true">›</span>
+        </div>
+        <button class="secondary-action" type="button" onclick="resetData()">Reset data</button>
+      </div>
+    </section>
+
+    <section id="screen-notifications" class="screen">
+      <button class="secondary-action" style="width:auto;min-height:40px;padding:8px 14px;margin:0 0 12px;" onclick="goBack()">‹ Back</button>
+      <h1 class="page-heading">Notifications</h1>
+      <div class="card" id="notification-list">
+        <div class="notice-item"><strong>Welcome to Chase Bank</strong><p>This is a experience. Balances, card controls, transfers, and deposits are stored only on this device.</p></div>
+        <div class="notice-item"><strong>Your card is ready</strong><p>Explore card controls in Cards. No real card or payment network is connected.</p></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="switchTab('screen-home', this)">
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      Home
+    </button>
+    <button class="nav-btn" onclick="switchTab('screen-accounts', this)">
+      <svg viewBox="0 0 24 24"><path d="M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z"/></svg>
+      Accounts
+    </button>
+    <button class="nav-btn" onclick="switchTab('screen-cards', this)">
+      <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+      Cards
+    </button>
+    <button class="nav-btn" onclick="switchTab('screen-activity', this)">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+      Activity
+    </button>
+    <button class="nav-btn" onclick="switchTab('screen-profile', this)">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      Profile
+    </button>
+  </nav>
+
+  <!-- Detail Bottom Sheet Modal -->
+  <div class="modal-overlay" id="tx-modal" onclick="closeTxModal(event)">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-grabber"></div>
+      <div class="sheet-header">
+        <h3 class="sheet-title">Transaction Details</h3>
+        <button class="close-btn" onclick="closeTxModal()">&times;</button>
+      </div>
+      <div id="tx-modal-body"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="action-modal" onclick="closeActionModal(event)">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-grabber"></div>
+      <div class="sheet-header">
+        <h3 class="sheet-title" id="action-modal-title">Action</h3>
+        <button class="close-btn" onclick="closeActionModal()" aria-label="Close">&times;</button>
+      </div>
+      <div id="action-modal-body"></div>
+    </div>
+  </div>
+  <div id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    // Transactions Store
+    const Transactions = [];
+
+    let currentFilter = 'all';
+    let searchQuery = '';
+
+    // Initialize UI
+    window.addEventListener('DOMContentLoaded', () => {
+      renderPreviewTransactions();
+      renderFullTransactions();
+    });
+
+    // Navigation Switcher
+    function toggleSideMenu() {
+      const menu = document.getElementById('side-menu');
+      const button = document.querySelector('.menu-btn');
+      const isOpen = menu.classList.toggle('open');
+      menu.setAttribute('aria-hidden', String(!isOpen));
+      button.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    function closeSideMenu(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const menu = document.getElementById('side-menu');
+      menu.classList.remove('open');
+      menu.setAttribute('aria-hidden', 'true');
+      document.querySelector('.menu-btn').setAttribute('aria-expanded', 'false');
+    }
+
+    function navigateFromMenu(screenId) {
+      closeSideMenu();
+      switchTab(screenId);
+    }
+
+    function switchTab(screenId, btnElem) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(screenId);
+      if (target) target.classList.add('active');
+
+      if (btnElem) {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btnElem.classList.add('active');
+      } else {
+        // Match nav button if switched programmatically
+        const navIndex = ['screen-home', 'screen-accounts', 'screen-cards', 'screen-activity', 'screen-profile'].indexOf(screenId);
+        if (navIndex !== -1) {
+          document.querySelectorAll('.nav-btn').forEach((b, idx) => {
+            b.classList.toggle('active', idx === navIndex);
+          });
+        }
+      }
+    }
+
+    // Render Preview on Home
+    function renderPreviewTransactions() {
+      const container = document.getElementById('home-tx-preview');
+      container.innerHTML = '';
+      Transactions.slice(0, 3).forEach(tx => {
+        container.appendChild(createTxElement(tx));
+      });
+    }
+
+    // Render Full Activity List
+    function renderFullTransactions() {
+      const container = document.getElementById('full-tx-list');
+      container.innerHTML = '';
+
+      let list = Transactions.filter(tx => {
+        const matchesSearch = tx.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              tx.category.toLowerCase().includes(searchQuery.toLowerCase());
+        if (!matchesSearch) return false;
+
+        if (currentFilter === 'pending') return tx.status === 'pending';
+        if (currentFilter === 'completed') return tx.status === 'completed';
+        if (currentFilter === 'credit') return tx.type === 'credit';
+        return true;
+      });
+
+      if (list.length === 0) {
+        container.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No matching transactions found.</div>';
+        return;
+      }
+
+      list.forEach(tx => {
+        container.appendChild(createTxElement(tx));
+      });
+    }
+
+    // Helper: Build Tx DOM element
+    function createTxElement(tx) {
+      const item = document.createElement('div');
+      item.className = 'tx-item';
+      item.onclick = () => openTxDetails(tx);
+
+      const isCredit = tx.type === 'credit';
+      const formattedAmount = `${isCredit ? '+' : '-'}$${Math.abs(tx.amount).toFixed(2)}`;
+
+      item.innerHTML = `
+        <div class="tx-icon">${tx.title.charAt(0)}</div>
+        <div class="tx-details">
+          <div class="tx-name">${escapeHtml(tx.title)}</div>
+          <div class="tx-date">${escapeHtml(tx.date)} &bull; ${escapeHtml(tx.category)}</div>
+        </div>
+        <div>
+          <div class="tx-amount ${isCredit ? 'positive' : 'negative'}">${formattedAmount}</div>
+          <div style="text-align: right;">
+            <span class="status-badge ${tx.status}">${tx.status.toUpperCase()}</span>
+          </div>
+        </div>
+      `;
+      return item;
+    }
+
+    // Search and Filters
+    function handleTxSearch(val) {
+      searchQuery = val;
+      renderFullTransactions();
+    }
+
+    function filterTx(filterType, btn) {
+      currentFilter = filterType;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderFullTransactions();
+    }
+
+    // Details Modal
+    function openTxDetails(tx) {
+      const modal = document.getElementById('tx-modal');
+      const body = document.getElementById('tx-modal-body');
+      const isCredit = tx.type === 'credit';
+
+      body.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="font-size: 28px; font-weight: 700; color: ${isCredit ? 'var(--success)' : 'var(--text)'};">
+            ${isCredit ? '+' : '-'}$${Math.abs(tx.amount).toFixed(2)}
+          </div>
+          <div style="font-size: 14px; font-weight: 600; margin-top: 4px;">${escapeHtml(tx.title)}</div>
+          <span class="status-badge ${tx.status}" style="margin-top: 8px;">${tx.status.toUpperCase()}</span>
+        </div>
+        <div class="detail-row"><span class="detail-label">Transaction Reference</span><span class="detail-val">${tx.id}</span></div>
+        <div class="detail-row"><span class="detail-label">Posting Date</span><span class="detail-val">${tx.date}</span></div>
+        <div class="detail-row"><span class="detail-label">Category</span><span class="detail-val">${tx.category}</span></div>
+        <div class="detail-row"><span class="detail-label">Status Details</span><span class="detail-val">${tx.status === 'pending' ? 'Pending funds clearance' : 'Cleared & Settled'}</span></div>
+      `;
+      modal.classList.add('open');
+    }
+
+    function closeTxModal() {
+      document.getElementById('tx-modal').classList.remove('open');
+    }
+
+    // Interactive Features
+    function toggleCardLock(elem) {
+      if (elem.checked) {
+        alert("Card Locked: Virtual card transactions temporarily suspended.");
+      } else {
+        alert("Card Unlocked: Card is ready for authorized purchases.");
+      }
+    }
+
+    function openActionModal(actionName) {
+      alert(`${actionName} simulation clicked. In a live system, this opens the transaction pipeline.`);
+    }
+
+    function openAlert(msg) {
+      alert(msg);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
+  </script>
+  <script>
+    const storageKey = 'chase-bank--v3';
+    const requestedCheckingTransactions = [
+      { id: 'CHASE--251467', title: '· Deposit reference 251467', date: 'October 27', category: 'Pending deposit · sample', amount: 8000, status: 'pending', account: 'checking' },
+      { id: 'CHASE--1008-Z', title: '· Zelle-style payment to PL', date: 'October 8', category: 'Payment · sample', amount: -693, status: 'completed', account: 'checking' },
+      { id: 'CHASE--0510-W', title: '· Wendy’s · Pompton Lakes, NJ', date: '05/10', category: 'Mobile purchase · sample', amount: -11.72, status: 'completed', account: 'checking' },
+      { id: 'CHASE--1002-I', title: '· IDT Boss Intl Calling · IDT.net NJ', date: 'October 2', category: 'Purchase · sample', amount: -10, status: 'completed', account: 'checking' },
+      { id: 'CHASE--0921-L', title: '· Lincoln Knight', date: 'September 21', category: 'Sample payment', amount: 490, status: 'completed', account: 'checking' },
+      { id: 'CHASE--0920-L', title: '· Lincoln Knight', date: 'September 20', category: 'Sample payment', amount: 680, status: 'completed', account: 'checking' },
+      { id: 'CHASE--0906-J', title: '· Jasper Baldevarona', date: 'September 6', category: 'Sample payment', amount: 300, status: 'completed', account: 'checking' },
+      { id: 'CHASE--0905-N', title: '· Navy Federal Credit Union · Easy Checking', date: 'September 5', category: 'Linked-account sample · •••• 6746', amount: 200, status: 'completed', account: 'checking' },
+      { id: 'CHASE--0827-L', title: '· Lincoln Knight', date: 'August 27', category: 'Sample payment', amount: 350, status: 'completed', account: 'checking' },
+      { id: 'CHASE--0509-P', title: '· Planet Candy · Checkcard', date: '05/09', category: 'Processing purchase · sample', amount: -14.83, status: 'pending', account: 'checking' }
+    ];
+    const initialData = {
+      balances: { checking: 68, savings: 0 },
+      transactions: [
+        ...requestedCheckingTransactions
+      ],
+      cardLocked: false,
+      onlinePayments: true,
+      biometrics: false
+    };
+    let appData = loadData();
+    let appFilter = 'all';
+    let appQuery = '';
+    let activeScreen = 'screen-home';
+    let previousScreen = 'screen-home';
+    let toastTimer;
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (!saved) return structuredClone(initialData);
+        const parsed = JSON.parse(saved);
+        if (!parsed || !parsed.balances || !Array.isArray(parsed.transactions)) throw new Error('Saved data has an invalid format.');
+        return {
+          ...structuredClone(initialData),
+          ...parsed,
+          balances: { ...initialData.balances, ...parsed.balances },
+          transactions: [...initialData.transactions, ...parsed.transactions]
+            .filter(transaction =>
+              transaction.id.startsWith('CHASE--') || /^CHASE-\d{8}$/.test(transaction.id))
+            .filter((transaction, index, transactions) =>
+              transactions.findIndex(candidate => candidate.id === transaction.id) === index)
+        };
+      } catch (error) {
+        console.error('Unable to load saved Chase data.', error);
+        return structuredClone(initialData);
+      }
+    }
+
+    function saveData() {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(appData));
+        return true;
+      } catch (error) {
+        console.error('Unable to save Chase data.', error);
+        showToast('Could not save changes on this device. Check browser storage settings.');
+        return false;
+      }
+    }
+
+    function initApp() {
+      renderPreviewTransactions();
+      renderFullTransactions();
+      updateBalances();
+      document.getElementById('card-lock-toggle').checked = appData.cardLocked;
+      document.getElementById('online-toggle').checked = appData.onlinePayments;
+      document.getElementById('biometric-toggle').checked = appData.biometrics;
+      document.querySelector('.virtual-card').classList.toggle('is-locked', appData.cardLocked);
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          closeActionModal();
+          closeTxModal();
+        }
+      });
+      if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+        navigator.serviceWorker.register('./sw.js?v=5').catch(error => {
+          console.error('Chase offline support could not be enabled.', error);
+        });
+      }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp);
+    else initApp();
+
+    function updateBalances() {
+      const checking = appData.balances.checking;
+      const savings = appData.balances.savings;
+      const total = checking + savings;
+      document.getElementById('home-checking-balance').textContent = money(checking);
+      document.getElementById('accounts-checking-balance').textContent = money(checking);
+      document.getElementById('home-savings-balance').textContent = money(savings);
+      document.getElementById('accounts-savings-balance').textContent = money(savings);
+      const totalBalance = document.getElementById('total-balance');
+      if (totalBalance) totalBalance.textContent = money(total);
+    }
+
+    function switchTab(screenId, btnElem) {
+      const target = document.getElementById(screenId);
+      if (!target) {
+        showToast('That section is not available.');
+        return;
+      }
+      if (activeScreen !== screenId) previousScreen = activeScreen;
+      activeScreen = screenId;
+      document.querySelectorAll('.screen').forEach(screen => screen.classList.toggle('active', screen.id === screenId));
+      const navIds = ['screen-home', 'screen-accounts', 'screen-cards', 'screen-activity', 'screen-profile'];
+      document.querySelectorAll('.nav-btn').forEach((button, index) => {
+        const selected = navIds[index] === screenId;
+        button.classList.toggle('active', selected);
+        if (selected) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+      });
+    }
+
+    function goBack() {
+      switchTab(previousScreen && previousScreen !== 'screen-notifications' ? previousScreen : 'screen-home');
+    }
+
+    function openNotifications() {
+      switchTab('screen-notifications');
+    }
+
+    function renderPreviewTransactions() {
+      const container = document.getElementById('home-tx-preview');
+      container.replaceChildren();
+      appData.transactions.slice(0, 3).forEach(tx => container.appendChild(createTxElement(tx)));
+      if (!appData.transactions.length) container.innerHTML = '<p class="inline-note">No activity yet. Your transactions will appear here.</p>';
+    }
+
+    function renderFullTransactions() {
+      const container = document.getElementById('full-tx-list');
+      if (!container) return;
+      container.replaceChildren();
+      const items = appData.transactions.filter(tx => {
+        const matches = `${tx.title} ${tx.category}`.toLowerCase().includes(appQuery.toLowerCase());
+        const credit = tx.amount > 0;
+        return matches && (appFilter === 'all' ||
+          (appFilter === 'pending' && tx.status === 'pending') ||
+          (appFilter === 'completed' && tx.status === 'completed') ||
+          (appFilter === 'credit' && credit));
+      });
+      if (!items.length) {
+        container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">No matching transactions found.</div>';
+        return;
+      }
+      items.forEach(tx => container.appendChild(createTxElement(tx)));
+    }
+
+    function createTxElement(tx) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'tx-item';
+      item.style.width = '100%';
+      item.style.background = 'transparent';
+      item.style.borderTop = '0';
+      item.style.borderLeft = '0';
+      item.style.borderRight = '0';
+      item.style.textAlign = 'left';
+      item.setAttribute('aria-label', `${tx.title}, ${formatSigned(tx.amount)}, ${tx.status}`);
+      item.onclick = () => openTxDetails(tx);
+      const credit = tx.amount >= 0;
+      item.innerHTML = `
+        <span class="tx-icon">${escapeHtml(tx.title.charAt(0).toUpperCase())}</span>
+        <span class="tx-details">
+          <span class="tx-name">${escapeHtml(tx.title)}</span><br>
+          <span class="tx-date">${escapeHtml(tx.date)} &bull; ${escapeHtml(tx.category)}</span>
+        </span>
+        <span>
+          <span class="tx-amount ${credit ? 'positive' : 'negative'}">${formatSigned(tx.amount)}</span><br>
+          <span class="status-badge ${tx.status}">${escapeHtml(tx.status.toUpperCase())}</span>
+        </span>`;
+      return item;
+    }
+
+    function handleTxSearch(value) {
+      appQuery = value.trim();
+      renderFullTransactions();
+    }
+
+    function filterTx(filterType, button) {
+      appFilter = filterType;
+      document.querySelectorAll('.tab-btn').forEach(tab => tab.classList.toggle('active', tab === button));
+      renderFullTransactions();
+    }
+
+    function openTxDetails(tx) {
+      document.getElementById('tx-modal-body').innerHTML = `
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:28px;font-weight:700;color:${tx.amount >= 0 ? 'var(--success)' : 'var(--text)'}">${formatSigned(tx.amount)}</div>
+          <div style="font-size:14px;font-weight:600;margin-top:4px;">${escapeHtml(tx.title)}</div>
+          <span class="status-badge ${tx.status}" style="margin-top:8px;">${escapeHtml(tx.status.toUpperCase())}</span>
+        </div>
+        <div class="detail-row"><span class="detail-label">reference</span><span class="detail-val">${escapeHtml(tx.id)}</span></div>
+        <div class="detail-row"><span class="detail-label">Date</span><span class="detail-val">${escapeHtml(tx.date)}</span></div>
+        <div class="detail-row"><span class="detail-label">Category</span><span class="detail-val">${escapeHtml(tx.category)}</span></div>
+        <p class="inline-note">Sample transaction only. This entry is not connected to a real bank or payment network.</p>`;
+      document.getElementById('tx-modal').classList.add('open');
+    }
+
+    function closeTxModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('tx-modal').classList.remove('open');
+    }
+
+    function openAccountDetails(account) {
+      const savings = account === 'savings';
+      const label = savings ? 'Everyday Checking' : 'Total Checking';
+      const balance = appData.balances[account];
+      document.getElementById('action-modal-title').textContent = label;
+      document.getElementById('action-modal-body').innerHTML = `
+        <div class="account-detail-summary">
+          <div class="account-detail-balance">${money(balance)}</div>
+          <div class="account-detail-caption">Available balance</div>
+          <h4>Account details</h4>
+          <div class="detail-row account-detail-value"><span class="detail-label">Available balance</span><strong>${money(balance)}</strong></div>
+          <div class="detail-row account-detail-value"><span class="detail-label">Present balance</span><strong>${money(balance)}</strong></div>
+          <div class="account-hidden-details" id="account-extra-details" hidden>
+            <div class="detail-row"><span class="detail-label">Account number</span><span class="detail-val">•••• ${savings ? '8765' : '4321'}</span></div>
+            <div class="detail-row"><span class="detail-label">Account type</span><span class="detail-val">${savings ? 'Everyday Checking' : 'Total Checking ·'}</span></div>
+            <div class="detail-row"><span class="detail-label">Routing number</span><span class="detail-val"></span></div>
+          </div>
+        </div>
+        <button class="account-details-toggle" type="button" onclick="toggleAccountDetails(this)">Show details⌄</button>
+        <div class="account-detail-quick">
+          <button class="account-shortcut" type="button" onclick="closeActionModal();openActionModal('Pay & Request','${account}')"><span class="account-shortcut-icon">▣</span>Pay</button>
+          <button class="account-shortcut" type="button" onclick="closeActionModal();openActionModal('Quick Transfer','${account}')"><span class="account-shortcut-icon">⇄</span>Transfer</button>
+          <button class="account-shortcut" type="button" onclick="showAccountManage('${account}')"><span class="account-shortcut-icon">•••</span>More</button>
+        </div>
+        <button class="account-link-card" type="button" onclick="showAccountManage('${account}')">
+          <span><strong>Manage account</strong><small>Access account tools and services for this </small></span><span aria-hidden="true" style="font-size:24px;color:var(--text-muted)">›</span>
+        </button>
+        <div class="card account-transaction-preview">
+          <button type="button" style="width:100%;display:flex;justify-content:space-between;border:0;background:none;text-align:left;font-weight:700;padding:4px 0 12px;" onclick="switchTab('screen-activity');closeActionModal()">See all transactions <span aria-hidden="true">›</span></button>
+          <div id="account-recent-transactions"></div>
+        </div>
+        `;
+      const transactionList = document.getElementById('account-recent-transactions');
+    
+      const accountTransactions = account === 'checking'
+        ? requestedCheckingTransactions
+        : appData.transactions.filter(tx => tx.account === account);
+      accountTransactions.forEach(tx => transactionList.appendChild(createTxElement(tx)));
+      document.getElementById('action-modal').classList.add('open');
+    }
+
+    function toggleAccountDetails(button) {
+      const details = document.getElementById('account-extra-details');
+      details.hidden = !details.hidden;
+      button.textContent = details.hidden ? 'Show details⌄' : 'Hide details⌃';
+    }
+
+    function showAccountManage(account) {
+      closeActionModal();
+      if (account === 'checking') switchTab('screen-cards');
+      else switchTab('screen-profile');
+      showToast('Account tools are settings on this device.');
+    }
+
+    function showProductInfo(product) {
+      if (product === 'Cards') {
+        switchTab('screen-cards');
+        return;
+      }
+      if (product === 'Checking') {
+        openAccountDetails('checking');
+        return;
+      }
+      if (product === 'Savings') {
+        openAccountDetails('savings');
+        return;
+      }
+      document.getElementById('action-modal-title').textContent = `${product} tools`;
+      document.getElementById('action-modal-body').innerHTML = `<p class="inline-note">${product} account products are not connected in this Chase Bank.</p><button class="primary-action" type="button" onclick="closeActionModal()">Got it</button>`;
+      document.getElementById('action-modal').classList.add('open');
+    }
+
+    function openQuickActions(source) {
+      document.getElementById('action-modal-title').textContent = source === 'pay' ? 'Pay & transfer · ' : 'Quick actions · ';
+      document.getElementById('action-modal-body').innerHTML = `
+    
+        <button class="account-link-card" type="button" onclick="openActionModal('Zelle ')"><span><strong>Zelle-style payment</strong><small>Record a sample payment on this device only</small></span><span aria-hidden="true">›</span></button>
+        <button class="account-link-card" type="button" onclick="openActionModal('Quick Transfer')"><span><strong>Transfer between accounts</strong><small>Updates sample balances stored locally</small></span><span aria-hidden="true">›</span></button>
+        <button class="account-link-card" type="button" onclick="openActionModal('Deposit ')"><span><strong>Add funds</strong><small>No check or deposit is processed</small></span><span aria-hidden="true">›</span></button>`;
+      document.getElementById('action-modal').classList.add('open');
+    }
+
+    function showBillPaymentNotice() {
+      document.getElementById('action-modal-title').textContent = 'Pay bills · demo';
+      document.getElementById('action-modal-body').innerHTML = `
+        <p class="inline-note">Bill payment is not connected in this demo. No biller is contacted and no payment is sent.</p>
+        <button class="primary-action" type="button" onclick="closeActionModal()">Got it</button>`;
+      document.getElementById('action-modal').classList.add('open');
+    }
+
+    function openActionModal(actionName, preferredAccount) {
+      const isDeposit = actionName.toLowerCase().includes('deposit');
+      const isZelle = actionName.toLowerCase().includes('zelle');
+      const account = preferredAccount || 'checking';
+      document.getElementById('action-modal-title').textContent = isDeposit ? 'Add  funds' : isZelle ? 'Zelle· not connected' : 'transfer';
+      const body = document.getElementById('action-modal-body');
+      body.innerHTML = isDeposit ? `
+        <p class="inline-note">Adds sample funds to your on-device balance only. No real deposit or check is processed.</p>
+        <form onsubmit="submitDeposit(event)">
+          <label class="form-field">Deposit to
+            <select name="account"><option value="checking">Total Checking</option><option value="savings">Everyday Checking</option></select>
+          </label>
+          <label class="form-field"> amount
+            <input name="amount" type="number" inputmode="decimal" min="0.01" max="10000" step="0.01" placeholder="0.00" required>
+          </label>
+          <button class="primary-action" type="submit">Add funds</button>
+        </form>` : `
+        <p class="inline-note">${isZelle ? 'Zelle is not connected. This clearly labeled only records a sample payment on this device; no payment is sent.' : 'This only updates the balances on this device. No money will be sent.'}</p>
+        <form onsubmit="submitTransfer(event)">
+          <input type="hidden" name="channel" value="${isZelle ? 'zelle' : 'transfer'}">
+          <label class="form-field">From
+            <select name="account"><option value="checking" ${account === 'checking' ? 'selected' : ''}>Total Checking · ${money(appData.balances.checking)}</option><option value="savings" ${account === 'savings' ? 'selected' : ''}>Everyday Checking · ${money(appData.balances.savings)}</option></select>
+          </label>
+          <label class="form-field">${isZelle ? ' recipient' : 'Recipient name'}<input name="recipient" type="text" maxlength="50" autocomplete="off" placeholder="Enter a recipient" required></label>
+          <label class="form-field">Amount
+            <input name="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" required>
+          </label>
+          <button class="primary-action" type="submit">${isZelle ? 'Record  payment' : 'Record transfer'}</button>
+        </form>`;
+      document.getElementById('action-modal').classList.add('open');
+    }
+
+    function submitTransfer(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const account = form.elements.account.value;
+      const recipient = form.elements.recipient.value.trim();
+      const amount = Number(form.elements.amount.value);
+      if (!recipient || !Number.isFinite(amount) || amount <= 0 || amount > appData.balances[account]) {
+        showToast(amount > appData.balances[account] ? 'Amount exceeds this  account balance.' : 'Enter a recipient and a valid amount.');
+        return;
+      }
+      appData.balances[account] = roundMoney(appData.balances[account] - amount);
+      const isZelle = form.elements.channel.value === 'zelle';
+      const transactionTitle = isZelle ? `Zelle-style payment to ${recipient}` : ` transfer to ${recipient}`;
+      appData.transactions.unshift(newTransaction(transactionTitle, isZelle ? 'payment' : 'Transfer', -amount));
+      if (!saveData()) return;
+      refreshActivity();
+      closeActionModal();
+      showToast(`${isZelle? ' payment' : ' transfer'} of ${money(amount)} recorded on this device only.`);
+    }
+
+    function submitDeposit(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const account = form.elements.account.value;
+      const amount = Number(form.elements.amount.value);
+      if (!Number.isFinite(amount) || amount <= 0 || amount > 10000) {
+        showToast('Enter a amount between $0.01 and $10,000.');
+        return;
+      }
+      appData.balances[account] = roundMoney(appData.balances[account] + amount);
+      appData.transactions.unshift(newTransaction('funds added', 'Deposit', amount));
+      if (!saveData()) return;
+      refreshActivity();
+      closeActionModal();
+      showToast(`${money(amount)} in  funds added on this device.`);
+    }
+
+    function newTransaction(title, category, amount) {
+      return {
+        id: `WIS-${Date.now().toString().slice(-8)}`,
+        title,
+        category,
+        amount,
+        status: 'completed',
+        date: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date())
+      };
+    }
+
+    function refreshActivity() {
+      updateBalances();
+      renderPreviewTransactions();
+      renderFullTransactions();
+    }
+
+    function toggleCardLock(input) {
+      appData.cardLocked = input.checked;
+      document.querySelector('.virtual-card').classList.toggle('is-locked', input.checked);
+      if (saveData()) showToast(input.checked ? ' card locked on this device.' : 'card unlocked.');
+    }
+
+    function toggleOnlineTransactions(input) {
+      appData.onlinePayments = input.checked;
+      if (saveData()) showToast(` online payment preference ${input.checked ? 'enabled' : 'disabled'}.`);
+    }
+
+    function togglePreference(key, value) {
+      appData[key] = value;
+      if (saveData()) showToast(`${key === 'biometrics' ? 'biometric preference' : 'setting'} ${value ? 'enabled' : 'disabled'}.`);
+    }
+
+    function resetData() {
+      appData = structuredClone(initialData);
+      if (!saveData()) return;
+      refreshActivity();
+      document.getElementById('card-lock-toggle').checked = false;
+      document.getElementById('online-toggle').checked = true;
+      document.getElementById('biometric-toggle').checked = false;
+      document.querySelector('.virtual-card').classList.remove('is-locked');
+      showToast(' data reset on this device.');
+    }
+
+    function closeActionModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('action-modal').classList.remove('open');
+    }
+
+    function showToast(message) {
+      const region = document.getElementById('toast-region');
+      region.innerHTML = `<div class="toast" role="status">${escapeHtml(message)}</div>`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => region.replaceChildren(), 3200);
+    }
+
+    function money(value) {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(value);
+    }
+
+    function formatSigned(value) {
+      return `${value >= 0 ? '+' : '−'}${money(Math.abs(value))}`;
+    }
+
+    function roundMoney(value) {
+      return Math.round((value + Number.EPSILON) * 100) / 100;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      })[character]);
+    }
+  </script>
+</body>
+</html>
